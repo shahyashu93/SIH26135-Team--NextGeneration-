@@ -3,7 +3,7 @@ import { PrismaClient, type EmploymentStatus, type Role, type Prisma } from "@pr
 import { hash } from "bcryptjs";
 import { CHECKPOINTS, DAY, NON_PLACEMENT_REASONS } from "../src/server/metrics";
 
-const db = new PrismaClient();
+const db = new PrismaClient(process.env.DIRECT_URL ? { datasourceUrl: process.env.DIRECT_URL } : undefined);
 const districts: [string, number, number][] = [
   ["Pune",18.52,73.86], ["Mumbai City",18.94,72.83], ["Mumbai Suburban",19.12,72.89], ["Thane",19.22,72.98], ["Palghar",19.69,72.77], ["Raigad",18.52,73.18], ["Ratnagiri",16.99,73.31], ["Sindhudurg",16.35,73.56],
   ["Nashik",20.00,73.79], ["Dhule",20.90,74.78], ["Nandurbar",21.37,74.24], ["Jalgaon",21.01,75.56], ["Ahilyanagar",19.10,74.74], ["Satara",17.68,74.00], ["Sangli",16.85,74.58], ["Solapur",17.66,75.91], ["Kolhapur",16.71,74.24],

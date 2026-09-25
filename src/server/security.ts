@@ -3,6 +3,7 @@ import { compare } from "bcryptjs";
 import { cookies } from "next/headers";
 import type { Prisma, Role, User } from "@prisma/client";
 import { db } from "./db";
+import { isAllowedOrigin, secureSessionCookie } from "./origin";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -39,8 +40,7 @@ export async function assertTrainee(user: Actor, id: string) {
   if (!trainee) throw new ApiError(404, "Trainee not found in your authorized scope.");
 }
 export function assertOrigin(request: Request) {
-  const configured = process.env.APP_ORIGIN;
-  if (!configured || request.headers.get("origin") !== new URL(configured).origin) throw new ApiError(403, "Request origin is not allowed.");
+  if (!isAllowedOrigin(request)) throw new ApiError(403, "Request origin is not allowed.");
   if (!request.headers.get("content-type")?.includes("application/json")) throw new ApiError(415, "Use application/json.");
 }
 export async function login(email: string, password: string, demoRole?: Role) {
@@ -55,7 +55,7 @@ export async function login(email: string, password: string, demoRole?: Role) {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 8 * 60 * 60_000);
   await db.session.create({ data: { id: sessionHash(token), userId: user.id, expiresAt } });
-  (await cookies()).set("skillpulse_session", token, { httpOnly: true, secure: process.env.APP_ORIGIN?.startsWith("https://"), sameSite: "lax", path: "/", expires: expiresAt });
+  (await cookies()).set("skillpulse_session", token, { httpOnly: true, secure: secureSessionCookie(), sameSite: "lax", path: "/", expires: expiresAt });
   await db.auditLog.create({ data: { actorId: user.id, action: "LOGIN", entityId: user.id, details: { demo: Boolean(demoRole) } } });
   return db.user.findUnique({ where: { id: user.id }, select: publicUser });
 }

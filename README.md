@@ -77,6 +77,8 @@ Coordinates operations across providers: programmes, enrolment, certification, r
 
 ## Run Locally
 
+For Vercel with Supabase or a Docker-based VPS, see [DEPLOYMENT.md](DEPLOYMENT.md). It covers origins, secrets, pooled/direct database connections, release migrations, HTTPS and the persistent reminder worker.
+
 **Requirements:** Node.js 22 LTS, npm and internet access for initial installation. A cloud account, Docker and an AI key are not required for the native demo.
 
 In the project folder, start the local database:

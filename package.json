@@ -2,9 +2,15 @@
   "name": "skillpulse-maharashtra",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "prisma generate && next build",
+    "postbuild": "tsx scripts/finalize-build.ts",
+    "build:vercel": "npm run deploy:check && npm run build",
+    "deploy:check": "tsx scripts/check-deployment.ts",
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

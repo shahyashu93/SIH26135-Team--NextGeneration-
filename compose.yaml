@@ -6,8 +6,8 @@ x-runtime: &runtime
   SESSION_SECRET: ${SESSION_SECRET:?Run npm run setup:local first}
   FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?Run npm run setup:local first}
   APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
-  DEMO_MODE: ${DEMO_MODE:-true}
-  DEMO_PASSWORD: ${DEMO_PASSWORD:?Run npm run setup:local first}
+  DEMO_MODE: ${DEMO_MODE:-false}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-}
   AI_BASE_URL: ${AI_BASE_URL:-}
   AI_API_KEY: ${AI_API_KEY:-}
   AI_MODEL: ${AI_MODEL:-GPT-6-astra}
@@ -51,6 +51,8 @@ services:
         condition: service_healthy
 
   web:
+    init: true
+    stop_grace_period: 30s
     build:
       context: .
       target: web
@@ -68,6 +70,8 @@ services:
     restart: unless-stopped
 
   worker:
+    init: true
+    stop_grace_period: 30s
     build:
       context: .
       target: tools

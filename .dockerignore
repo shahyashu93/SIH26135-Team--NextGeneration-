@@ -6,6 +6,7 @@ node_modules
 !.env.example
 .git
 .vscode
+.vercel
 test-results
 *.tsbuildinfo
 npm-debug.log*

@@ -10,6 +10,7 @@ import * as workflows from "@/server/workflows";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 type Context = { params: Promise<{ path: string[] }> };
 const success = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
 function failure(error: unknown) {

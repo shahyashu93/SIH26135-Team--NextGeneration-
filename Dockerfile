@@ -12,6 +12,7 @@ RUN npm run build
 FROM dependencies AS tools
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 COPY scripts ./scripts
 COPY src/server ./src/server
 COPY tsconfig.json ./tsconfig.json

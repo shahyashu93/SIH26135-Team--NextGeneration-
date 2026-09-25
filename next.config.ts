@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
+  outputFileTracingExcludes: { "*": ["./.env", "./.env.*"] },
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: [
