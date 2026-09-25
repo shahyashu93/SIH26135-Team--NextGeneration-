@@ -1,0 +1,95 @@
+name: skillpulse
+
+x-runtime: &runtime
+  DATABASE_URL: postgresql://skillpulse:${POSTGRES_PASSWORD:?Run npm run setup:local first}@postgres:5432/skillpulse?schema=public
+  REDIS_URL: redis://redis:6379
+  SESSION_SECRET: ${SESSION_SECRET:?Run npm run setup:local first}
+  FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?Run npm run setup:local first}
+  APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+  DEMO_MODE: ${DEMO_MODE:-true}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:?Run npm run setup:local first}
+  AI_BASE_URL: ${AI_BASE_URL:-}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-GPT-6-astra}
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: skillpulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup:local first}
+      POSTGRES_DB: skillpulse
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U skillpulse -d skillpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: tools
+    environment: *runtime
+    command: [npm, run, db:migrate]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: web
+    environment: *runtime
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/health').then(response=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: tools
+    environment: *runtime
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  seed:
+    profiles: [tools]
+    build:
+      context: .
+      target: tools
+    environment: *runtime
+    command: [npm, run, db:seed]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  redis-data:

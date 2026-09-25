@@ -1,0 +1,30 @@
+import { notFound, redirect } from "next/navigation";
+import { actor, ApiError, demoEnabled } from "@/server/security";
+import { Advisor, Districts, Intelligence, Overview, Reports } from "@/components/analytics-views";
+import { Audit, Directory, Employer, Followups, Programs } from "@/components/operations";
+import { TraineeProfile } from "@/components/profile";
+import { Demo } from "@/components/demo";
+import { ErrorState } from "@/components/ui/common";
+export default async function WorkspacePage({ params }: { params: Promise<{ view?: string[] }> }) {
+  const user = await actor().catch(error => { if (error instanceof ApiError && error.status === 401) redirect("/login"); throw error; });
+  const { view = [] } = await params; const route = view[0] ?? "";
+  if (!route && user.role === "TRAINEE") redirect("/my-profile");
+  if (!route && user.role === "EMPLOYER") redirect("/employer");
+  const aggregate = ["ADMIN","OFFICER","PROVIDER"].includes(user.role);
+  if (["","districts","intelligence","advisor","reports","programs"].includes(route) && !aggregate) return <ErrorState message="This workspace is restricted to aggregate analytics roles." />;
+  if (route === "" && view.length === 0) return <Overview />;
+  if (view.length === 2 && route === "trainees") return <TraineeProfile id={view[1]} user={user} />;
+  if (view.length > 1) notFound();
+  if (route === "districts") return <Districts />;
+  if (route === "intelligence") return <Intelligence />;
+  if (route === "advisor") return <Advisor />;
+  if (route === "reports") return <Reports />;
+  if (route === "programs") return <Programs user={user} />;
+  if (route === "trainees") return <Directory />;
+  if (route === "my-profile") return <TraineeProfile id="me" user={user} />;
+  if (route === "followups") return <Followups user={user} />;
+  if (route === "employer") return <Employer />;
+  if (route === "audit") return <Audit />;
+  if (route === "demo" && demoEnabled()) return <Demo />;
+  notFound();
+}

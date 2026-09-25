@@ -1,0 +1,16 @@
+- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+- [x] Clarify Project Requirements: SkillPulse Maharashtra, SIH26135, full-stack outcome intelligence.
+- [x] Scaffold the Project
+- [x] Customize the Project
+- [x] Install Required Extensions: none required.
+- [x] Compile the Project
+- [x] Create and Run Task
+- [x] Launch the Project
+- [x] Ensure Documentation is Complete
+
+- Work through each checklist item systematically.
+- Keep communication concise and focused.
+- Follow development best practices.
+- All data is synthetic. Never describe prototype statistics as official government data.
+- Keep KPI math deterministic and AI recommendations read-only.
+- Enforce role and ownership scope on the server, not only in the interface.

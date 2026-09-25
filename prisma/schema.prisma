@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OFFICER
+  PROVIDER
+  EMPLOYER
+  TRAINEE
+}
+
+enum EmploymentStatus {
+  SALARIED
+  SELF_EMPLOYED
+  ENTREPRENEUR
+  APPRENTICESHIP
+  FREELANCE
+  UNEMPLOYED
+  EDUCATION
+}
+
+enum FollowupStatus {
+  SCHEDULED
+  SENT
+  COMPLETED
+  CANCELLED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  DISPUTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  providerId   String?
+  employerId   String?
+  traineeId    String?  @unique
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  provider     Provider? @relation(fields: [providerId], references: [id])
+  employer     Employer? @relation(fields: [employerId], references: [id])
+  trainee      Trainee?  @relation(fields: [traineeId], references: [id])
+  sessions     Session[]
+  notifications Notification[]
+
+  @@index([providerId])
+  @@index([employerId])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model District {
+  id         String @id
+  name       String @unique
+  latitude   Float
+  longitude  Float
+  trainees   Trainee[]
+  providers  Provider[]
+
+  @@map("districts")
+}
+
+model Provider {
+  id         String @id @default(cuid())
+  name       String
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  users      User[]
+  programs   TrainingProgram[]
+  enrollments Enrollment[]
+
+  @@map("providers")
+}
+
+model TrainingProgram {
+  id         String @id @default(cuid())
+  name       String
+  sector     String
+  modules    String[]
+  providerId String
+  duration   Int
+  provider   Provider @relation(fields: [providerId], references: [id])
+  enrollments Enrollment[]
+
+  @@index([providerId])
+  @@map("training_programs")
+}
+
+model Trainee {
+  id               String @id @default(cuid())
+  skillId          String @unique
+  name             String
+  districtId       String
+  gender           String
+  contactEncrypted String?
+  location         String
+  skills           String[]
+  createdAt        DateTime @default(now())
+  district         District @relation(fields: [districtId], references: [id])
+  user             User?
+  enrollments      Enrollment[]
+  employment       EmploymentRecord[]
+  followups        Followup[]
+  events           OutcomeEvent[]
+  skillGaps        SkillGap[]
+  consents         Consent[]
+
+  @@index([districtId, gender])
+  @@index([name])
+  @@map("trainees")
+}
+
+model Enrollment {
+  id          String @id @default(cuid())
+  traineeId   String
+  programId   String
+  providerId  String
+  cohort      String
+  enrolledAt  DateTime
+  completedAt DateTime?
+  attendance  Float
+  trainee     Trainee @relation(fields: [traineeId], references: [id])
+  program     TrainingProgram @relation(fields: [programId], references: [id])
+  provider    Provider @relation(fields: [providerId], references: [id])
+  assessments Assessment[]
+  certification Certification?
+
+  @@unique([traineeId, programId, cohort])
+  @@index([providerId, cohort])
+  @@index([programId])
+  @@map("enrollments")
+}
+
+model Assessment {
+  id           String @id @default(cuid())
+  enrollmentId String
+  skill        String
+  score        Int
+  assessedAt   DateTime
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  @@index([enrollmentId])
+  @@map("assessments")
+}
+
+model Certification {
+  id           String @id @default(cuid())
+  enrollmentId String @unique
+  certificate  String @unique
+  issuedAt     DateTime
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  @@map("certifications")
+}
+
+model Employer {
+  id           String @id @default(cuid())
+  name         String
+  sector       String
+  requirements String[]
+  sandbox      Boolean @default(true)
+  users        User[]
+  employment   EmploymentRecord[]
+
+  @@map("employers")
+}
+
+model EmploymentRecord {
+  id          String @id @default(cuid())
+  traineeId   String
+  employerId  String?
+  status      EmploymentStatus
+  role        String
+  startDate   DateTime
+  endDate     DateTime?
+  reason      String?
+  createdAt   DateTime @default(now())
+  trainee     Trainee @relation(fields: [traineeId], references: [id])
+  employer    Employer? @relation(fields: [employerId], references: [id])
+  salaries    SalaryObservation[]
+  verification EmployerVerification?
+
+  @@index([traineeId, startDate])
+  @@index([employerId])
+  @@map("employment_records")
+}
+
+model SalaryObservation {
+  id           String @id @default(cuid())
+  employmentId String
+  amount       Int
+  recordedAt   DateTime
+  source       String
+  employment   EmploymentRecord @relation(fields: [employmentId], references: [id])
+
+  @@unique([employmentId, recordedAt])
+  @@map("salary_history")
+}
+
+model EmployerVerification {
+  id             String @id @default(cuid())
+  employmentId   String @unique
+  status         VerificationStatus @default(PENDING)
+  employmentOk   Boolean @default(false)
+  roleOk         Boolean @default(false)
+  salaryOk       Boolean @default(false)
+  startDateOk    Boolean @default(false)
+  score          Int @default(0)
+  requestedAt    DateTime @default(now())
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  employment     EmploymentRecord @relation(fields: [employmentId], references: [id])
+
+  @@index([status])
+  @@map("employer_verifications")
+}
+
+model Followup {
+  id           String @id @default(cuid())
+  traineeId    String
+  checkpoint   Int
+  dueAt        DateTime
+  status       FollowupStatus @default(SCHEDULED)
+  response     Json?
+  completedAt  DateTime?
+  trainee      Trainee @relation(fields: [traineeId], references: [id])
+
+  @@unique([traineeId, checkpoint])
+  @@index([status, dueAt])
+  @@map("followups")
+}
+
+model OutcomeEvent {
+  id        String @id @default(cuid())
+  traineeId String
+  type      String
+  label     String
+  payload   Json
+  occurredAt DateTime @default(now())
+  actorId   String?
+  trainee   Trainee @relation(fields: [traineeId], references: [id])
+
+  @@index([traineeId, occurredAt])
+  @@map("outcome_events")
+}
+
+model SkillGap {
+  id        String @id @default(cuid())
+  traineeId String
+  skill     String
+  severity  String
+  evidence  String
+  action    String
+  source    String
+  createdAt DateTime @default(now())
+  trainee   Trainee @relation(fields: [traineeId], references: [id])
+
+  @@unique([traineeId, skill])
+  @@index([severity])
+  @@map("skill_gaps")
+}
+
+model Consent {
+  id        String @id @default(cuid())
+  traineeId String
+  purpose   String
+  granted   Boolean
+  updatedAt DateTime @updatedAt
+  trainee   Trainee @relation(fields: [traineeId], references: [id])
+
+  @@unique([traineeId, purpose])
+  @@map("consents")
+}
+
+model AuditLog {
+  id        String @id @default(cuid())
+  actorId   String?
+  action    String
+  entityId  String
+  details   Json
+  createdAt DateTime @default(now())
+
+  @@index([action, entityId, createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  read      Boolean @default(false)
+  dedupeKey String? @unique
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@map("notifications")
+}

@@ -1,0 +1,8 @@
+"use client";
+import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import type { Analytics } from "@/server/analytics";
+
+export default function DistrictMap({ districts, selected, onSelect, full = false }: { districts: Analytics["districts"]; selected?: string; onSelect: (id: string) => void; full?: boolean }) {
+  return <div className={`map-container ${full ? "full" : ""}`}><MapContainer bounds={[[15.6,72.4],[22.1,80.8]]} scrollWheelZoom={false} zoomControl={true} attributionControl={true}><TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />{districts.map(district => <CircleMarker key={district.id} center={[district.latitude, district.longitude]} radius={selected === district.id ? 12 : 7} pathOptions={{ color: selected === district.id ? "#123e2c" : "#fff", weight: selected === district.id ? 2 : 1.5, fillColor: district.placementRate >= 80 ? "#2b8161" : district.placementRate >= 65 ? "#83b591" : "#d8b773", fillOpacity: 0.9 }} eventHandlers={{ click: () => onSelect(district.id) }}><Tooltip><strong>{district.name}</strong><br />{district.placementRate}% placed / {district.total} trainees<br />Synthetic demo data</Tooltip></CircleMarker>)}</MapContainer></div>;
+}

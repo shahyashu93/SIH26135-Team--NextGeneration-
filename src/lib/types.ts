@@ -1,0 +1,8 @@
+import type { Prisma } from "@prisma/client";
+type Serialized<Type> = Type extends Date ? string : Type extends Array<infer Item> ? Serialized<Item>[] : Type extends object ? { [Key in keyof Type]: Serialized<Type[Key]> } : Type;
+export type Profile = Serialized<Prisma.TraineeGetPayload<{ include: { district: true; enrollments: { include: { program: true; provider: true; assessments: true; certification: true } }; employment: { include: { employer: true; salaries: true; verification: true } }; followups: true; events: true; skillGaps: true; consents: true } }>> & { contact?: string };
+export type Options = { districts: { id: string; name: string }[]; programs: { id: string; name: string; sector: string; duration: number; modules: string[]; providerId: string; provider: { name: string } }[]; providers: { id: string; name: string }[]; employers: { id: string; name: string; sandbox: boolean }[] };
+export type TraineeRow = { id: string; name: string; skillId: string; district: { name: string }; enrollments: { program: { name: string }; cohort: string; certification: { issuedAt: string } | null }[]; employment: { status: string; verification: { status: string } | null }[] };
+export type PageData<Item> = { items: Item[]; total: number; page: number; pageSize: number };
+export type FollowupRow = { id: string; checkpoint: number; dueAt: string; status: string; trainee: { id: string; name: string; skillId: string } };
+export type Verification = { id: string; status: string; score: number; requestedAt: string; verifiedAt: string | null; employment: { role: string; startDate: string; status: string; trainee: { name: string; skillId: string }; salaries: { amount: number }[]; employer: { name: string; sandbox: boolean } | null } };
