@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { db } from "@/server/db";
-import { actor, allow, ApiError, assertOrigin, assertTrainee, decryptContact, demoEnabled, login, logout, traineeScope } from "@/server/security";
+import { actor, allow, ApiError, assertOrigin, assertTrainee, completeGoogleLogin, decryptContact, demoEnabled, login, logout, startGoogleLogin, traineeScope } from "@/server/security";
 import { analytics } from "@/server/analytics";
 import { advise, analyzeGaps, ruleInsights } from "@/server/ai";
 import * as schemas from "@/server/contracts";
@@ -27,6 +27,17 @@ export async function GET(request: NextRequest, context: Context) {
   try {
     const { path } = await context.params;
     const route = path.join("/");
+    if (route === "auth/google") {
+      try { return NextResponse.redirect(await startGoogleLogin()); }
+      catch (error) { if (error instanceof ApiError) return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url)); throw error; }
+    }
+    if (route === "auth/google/callback") {
+      const code = request.nextUrl.searchParams.get("code");
+      const state = request.nextUrl.searchParams.get("state");
+      if (!code || !state) throw new ApiError(400, "Google sign-in was cancelled or incomplete.");
+      await completeGoogleLogin(code, state);
+      return NextResponse.redirect(new URL("/", request.url));
+    }
     if (route === "config") return success({ demo: demoEnabled(), synthetic: true });
     if (route === "health") { await db.$queryRaw`SELECT 1`; return success({ status: "ok" }); }
     const user = await actor();

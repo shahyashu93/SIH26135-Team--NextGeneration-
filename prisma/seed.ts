@@ -29,8 +29,32 @@ const lastNames = ["Deshmukh", "Jadhav", "More", "Shinde", "Pawar", "Kadam", "Ch
 async function main() {
   if (process.env.DEMO_MODE !== "true") throw new Error("Seeding requires DEMO_MODE=true. Never seed production records.");
   if (!process.env.DEMO_PASSWORD || process.env.DEMO_PASSWORD.length < 12) throw new Error("Set a strong DEMO_PASSWORD before seeding.");
-  if (await db.trainee.count()) { console.log("Existing trainees found. Seed skipped to preserve workflow changes."); return; }
-  const passwordHash = await hash(process.env.DEMO_PASSWORD, 12);
+  const traineePasswordHash = await hash(process.env.TRAINEE_PASSWORD ?? process.env.DEMO_PASSWORD, 12);
+  const rolePasswordHashes: Record<Role, string> = {
+    ADMIN: await hash(process.env.ADMIN_PASSWORD ?? process.env.DEMO_PASSWORD, 12),
+    OFFICER: await hash(process.env.OFFICER_PASSWORD ?? process.env.DEMO_PASSWORD, 12),
+    PROVIDER: await hash(process.env.PROVIDER_PASSWORD ?? process.env.DEMO_PASSWORD, 12),
+    EMPLOYER: await hash(process.env.EMPLOYER_PASSWORD ?? process.env.DEMO_PASSWORD, 12),
+    TRAINEE: traineePasswordHash
+  };
+  if (await db.trainee.count()) {
+    const roleAccounts = [
+      { role: "ADMIN" as const, email: process.env.ADMIN_EMAIL?.toLowerCase() ?? "admin@skillpulse.demo" },
+      { role: "OFFICER" as const, email: process.env.OFFICER_EMAIL?.toLowerCase() ?? "officer@skillpulse.demo" },
+      { role: "PROVIDER" as const, email: process.env.PROVIDER_EMAIL?.toLowerCase() ?? "provider@skillpulse.demo" },
+      { role: "EMPLOYER" as const, email: process.env.EMPLOYER_EMAIL?.toLowerCase() ?? "employer@skillpulse.demo" }
+    ];
+    await db.$transaction(async transaction => {
+      for (const account of roleAccounts) {
+        const user = await transaction.user.findFirst({ where: { role: account.role } });
+        if (user) await transaction.user.update({ where: { id: user.id }, data: { email: account.email, passwordHash: rolePasswordHashes[account.role] } });
+      }
+      const trainee = await transaction.user.findFirst({ where: { role: "TRAINEE", traineeId: "rahul-patil" } });
+      if (trainee) await transaction.user.update({ where: { id: trainee.id }, data: { email: process.env.TRAINEE_EMAIL?.toLowerCase() ?? "trainee@skillpulse.demo", passwordHash: traineePasswordHash } });
+    });
+    console.log("Existing synthetic data preserved. Demo role credentials refreshed.");
+    return;
+  }
   await db.$transaction(async transaction => {
     await transaction.district.createMany({ data: districts.map(([name, latitude, longitude], index) => ({ id: `district-${index}`, name, latitude, longitude })) });
     const providerNames = ["Pune Renewable Skills Centre", "Maharashtra Advanced Manufacturing Institute", "Sahyadri Healthcare Academy", "Nagpur Digital Skills Institute", "Konkan Livelihoods Foundation", "Marathwada Technical Centre"];
@@ -82,15 +106,15 @@ async function main() {
           ...(verified ? [{ type: "EMPLOYER_VERIFIED", label: "Sandbox employer confirmed employment", occurredAt: new Date(start.getTime() + 3 * DAY), payload: { score: 100, synthetic: true } }] : []),
           ...followups.filter(followup => followup.completedAt).map(followup => ({ type: "FOLLOWUP_COMPLETED", label: `${followup.checkpoint}-day outcome recorded`, occurredAt: followup.completedAt!, payload: { checkpoint: followup.checkpoint, synthetic: true } }))
         ] },
-        user: { create: { email: isRahul ? "trainee@skillpulse.demo" : `trainee${index}@skillpulse.demo`, passwordHash, name: isRahul ? "Rahul Patil" : `Synthetic trainee ${index}`, role: "TRAINEE" } }
+        user: { create: { email: isRahul ? process.env.TRAINEE_EMAIL?.toLowerCase() ?? "trainee@skillpulse.demo" : `trainee${index}@skillpulse.demo`, passwordHash: traineePasswordHash, name: isRahul ? "Rahul Patil" : `Synthetic trainee ${index}`, role: "TRAINEE" } }
       } });
     }
-    const roles: { role: Role; name: string; providerId?: string; employerId?: string }[] = [
-      { role: "ADMIN", name: "Platform Administrator" }, { role: "OFFICER", name: "Ananya Deshmukh" },
-      { role: "PROVIDER", name: "Pune Skills Coordinator", providerId: "provider-0" }, { role: "EMPLOYER", name: "SuryaGrid Verification Desk", employerId: "employer-0" }
+    const roles: { role: Role; name: string; email?: string; providerId?: string; employerId?: string }[] = [
+      { role: "ADMIN", name: "Platform Administrator", email: process.env.ADMIN_EMAIL?.toLowerCase() ?? "admin@skillpulse.demo" }, { role: "OFFICER", name: "Ananya Deshmukh", email: process.env.OFFICER_EMAIL?.toLowerCase() ?? "officer@skillpulse.demo" },
+      { role: "PROVIDER", name: "Pune Skills Coordinator", email: process.env.PROVIDER_EMAIL?.toLowerCase() ?? "provider@skillpulse.demo", providerId: "provider-0" }, { role: "EMPLOYER", name: "SuryaGrid Verification Desk", email: process.env.EMPLOYER_EMAIL?.toLowerCase() ?? "employer@skillpulse.demo", employerId: "employer-0" }
     ];
-    await transaction.user.createMany({ data: roles.map(user => ({ ...user, email: `${user.role.toLowerCase()}@skillpulse.demo`, passwordHash })) });
-    const rahul = await transaction.user.findUniqueOrThrow({ where: { email: "trainee@skillpulse.demo" } });
+    await transaction.user.createMany({ data: roles.map(user => ({ ...user, email: user.email ?? `${user.role.toLowerCase()}@skillpulse.demo`, passwordHash: rolePasswordHashes[user.role] })) });
+    const rahul = await transaction.user.findUniqueOrThrow({ where: { email: process.env.TRAINEE_EMAIL?.toLowerCase() ?? "trainee@skillpulse.demo" } });
     await transaction.notification.create({ data: { userId: rahul.id, title: "Your 90-day check-in is ready", body: "Share your employment update and current monthly income." } });
     await transaction.auditLog.create({ data: { action: "SYNTHETIC_DATA_SEEDED", entityId: "demo-2026", details: { trainees: 720, districts: 36, officialStatistics: false } } });
   }, { timeout: 180_000 });

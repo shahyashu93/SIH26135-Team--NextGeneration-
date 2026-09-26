@@ -14,6 +14,11 @@ export function trustedOrigins(environment: Environment = process.env): string[]
       const url = new URL(candidate);
       if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.pathname !== "/" || url.search || url.hash) return [];
       if (vercel && url.protocol !== "https:") return [];
+      if (!vercel && url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)) {
+        const alias = new URL(url.origin);
+        alias.hostname = url.hostname === "localhost" ? "127.0.0.1" : "localhost";
+        return [...new Set([url.origin, alias.origin])];
+      }
       return [url.origin];
     } catch { return []; }
   }))];

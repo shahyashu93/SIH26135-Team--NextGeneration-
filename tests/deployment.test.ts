@@ -22,7 +22,7 @@ test("custom domains and VPS origins must be explicitly configured", () => {
   assert.equal(isAllowedOrigin(request("https://skills.example.org"), { ...vercel, APP_ORIGIN: "https://skills.example.org/" }), true);
   assert.equal(isAllowedOrigin(request("https://skills.example.org"), { APP_ORIGIN: "https://skills.example.org" }), true);
   assert.equal(isAllowedOrigin(request("http://localhost:3000"), { APP_ORIGIN: "http://localhost:3000" }), true);
-  assert.equal(isAllowedOrigin(request("http://127.0.0.1:3000"), { APP_ORIGIN: "http://localhost:3000" }), false);
+  assert.equal(isAllowedOrigin(request("http://127.0.0.1:3000"), { APP_ORIGIN: "http://localhost:3000" }), true);
 });
 
 test("untrusted origins and spoofed proxy headers never authorize a request", () => {

@@ -101,6 +101,8 @@ npm run dev
 Open **http://localhost:3000** and choose a demo role. Use `localhost`, not `127.0.0.1`, to match the configured application origin.
 
 - Setup generates secrets in `.env` and preserves existing settings. Never commit this file.
+- Demo workspace credentials are role-specific: `ADMIN_EMAIL`/`ADMIN_PASSWORD`, `OFFICER_EMAIL`/`OFFICER_PASSWORD`, `PROVIDER_EMAIL`/`PROVIDER_PASSWORD`, `EMPLOYER_EMAIL`/`EMPLOYER_PASSWORD`, and `TRAINEE_EMAIL`/`TRAINEE_PASSWORD`. Set these before seeding; the demo buttons use the matching account and cannot switch it to another role.
+- Google sign-in is available after setting `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for an OAuth web client with redirect URI `${APP_ORIGIN}/api/auth/google/callback`. The Google email must match an active provisioned workspace account; its existing server role is retained.
 - Native PostgreSQL runs on port **54329**, with persistent data in `.local/postgres`.
 - Seeding preserves an existing dataset rather than resetting completed demo actions.
 - If port 3000 is occupied, set `APP_ORIGIN=http://localhost:3001` and run `npm run dev -- --port 3001`.
